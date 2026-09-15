@@ -7,8 +7,6 @@
 			"Workers"
 		],
 		"categories": [],
-		"preview_icon_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/532a5378-9717-4964-385b-5fafd2160200/public",
-		"preview_image_url": "https://imagedelivery.net/wSMYJvS3Xw-n339CbDyDIA/ec7f4be5-d1d6-4e94-0851-126341745400/preview",
 		"publish": true
 	},
 	"dependencies": {
@@ -17,13 +15,13 @@
 		"react-dom": "19.2.1"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "2.5.13",
 		"@cloudflare/vite-plugin": "1.52.1",
 		"@eslint/js": "9.39.1",
 		"@types/node": "24.10.1",
 		"@types/react": "19.2.7",
 		"@types/react-dom": "19.2.3",
 		"@vitejs/plugin-react": "5.1.1",
-		"eslint": "9.39.2",
 		"eslint-plugin-react-hooks": "7.0.1",
 		"eslint-plugin-react-refresh": "0.4.24",
 		"globals": "16.5.0",
@@ -39,8 +37,9 @@
 		"check": "tsc && vite build && wrangler deploy --dry-run",
 		"deploy": "wrangler deploy",
 		"dev": "vite",
-		"lint": "eslint .",
-		"preview": "npm run build && vite preview"
+		"lint": "biome lint ./src",
+		"format": "biome format --write ./src",
+		"preview": "pnpm run build && vite preview"
 	},
 	"type": "module"
 }
