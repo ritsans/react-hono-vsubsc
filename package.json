@@ -1,40 +1,47 @@
 {
-	"name": "vite-react-template",
-	"description": "A template for building a React application with Vite, Hono, and Cloudflare Workers",
-	"cloudflare": {
-		"label": "Vite React Template",
-		"products": [
-			"Workers"
-		],
-		"categories": [],
-		"publish": true
-	},
-	"dependencies": {
-		"hono": "4.11.1",
-		"react": "19.2.1",
-		"react-dom": "19.2.1"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "2.5.13",
-		"@cloudflare/vite-plugin": "1.52.1",
-		"@types/node": "24.10.1",
-		"@types/react": "19.2.7",
-		"@types/react-dom": "19.2.3",
-		"@vitejs/plugin-react": "5.1.1",
-		"typescript": "5.9.3",
-		"vite": "^7.0.0",
-		"wrangler": "4.131.1"
-	},
-	"private": true,
-	"scripts": {
-		"build": "tsc -b && vite build",
-		"cf-typegen": "wrangler types",
-		"check": "tsc && vite build && wrangler deploy --dry-run",
-		"deploy": "wrangler deploy",
-		"dev": "vite",
-		"lint": "biome lint ./src",
-		"format": "biome format --write ./src",
-		"preview": "pnpm run build && vite preview"
-	},
-	"type": "module"
+  "name": "vite-react-template",
+  "description": "A template for building a React application with Vite, Hono, and Cloudflare Workers",
+  "cloudflare": {
+    "label": "Vite React Template",
+    "products": [
+      "Workers"
+    ],
+    "categories": [],
+    "publish": true
+  },
+  "dependencies": {
+    "hono": "4.11.1",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@cloudflare/vite-plugin": "1.52.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "jsdom": "^30.0.1",
+    "typescript": "5.9.3",
+    "vite": "^7.0.0",
+    "vitest": "^5.0.0",
+    "wrangler": "4.131.1"
+  },
+  "private": true,
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "cf-typegen": "wrangler types",
+    "check": "tsc -b && vite build && wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "dev": "vite",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "preview": "pnpm run build && vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "type": "module"
 }
