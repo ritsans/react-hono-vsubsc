@@ -9,6 +9,32 @@ Cloudflare Workers 上で動く React (client) + Hono (server) の単一 Worker 
 - `src/client` — Frontend i.e React SPA。`dist/client` にビルドされ、Worker の `ASSETS` バインディング経由で配信
 - `src/server` — Backend i.e Hono。Worker のエントリポイント (`wrangler.jsonc` の `main`)
 
+## コーディング方針
+
+**「効率化」「実装の速さ」よりも、非エンジニアが読んでも処理の流れを追えるシンプルさを優先する。**
+
+- 処理は上から下への一本道に書く。
+- 先回りした抽象化・汎用化をしない。1 箇所でしか使わないものをわざわざ共通化しない
+- 「何をしているか」はコードで表し、コメントには「なぜそうしているか」を書く
+- パフォーマンス最適化は、実測で問題が出てから行う。**推測で最適化しない**
+- 迷ったらユーザーに尋ねる
+
+## ドキュメント (`docs/`)
+
+仕様・設計書は `docs/` に置く。常時読み込まず、**仕様判断・設計意図・ドメイン用語の確認時のみ** `ls docs/` で一覧を確認して参照する（リファクタや型修正時は不要）。
+
+### 責務の分担 (SSOT)
+
+- **コードが正**: データ構造・型・バリデーション・制約
+  - docs に型の詳細や制約値を転記しない。食い違いはコードを正として docs を修正する。
+
+- **docs が正**: 目的・設計意図・採用理由（「なぜ」の部分）
+  - 実装と食い違う場合は、意図的な変更か実装漏れかを判断して対応する。
+
+### セッション再開
+
+新しいセッションの開始時、または前回の作業を引き継ぐ時は、まず `docs/progress.md` を読み、現在地と次にやることを確認する。作業が一区切りついたら（機能単位の実装完了・方針決定など）`docs/progress.md` を更新する。
+
 ## パッケージマネージャ
 
 Use **pnpm only**. The `preview` script directly invokes `pnpm run build`, and the project uses a single lockfile: `pnpm-lock.yaml`.
@@ -50,7 +76,6 @@ project references の対応:
 
 その他の注意:
 
-- `index.html` は Biome 2.5 の HTML フォーマッタが既定で無効なため**自動整形されない**。2 スペースを手で維持すること
 - `README.md` / `CLAUDE.md` / `pnpm-workspace.yaml` / `pnpm-lock.yaml` は Biome が扱わない形式なので、除外指定は不要
 
 ## テスト (Vitest)
@@ -92,4 +117,4 @@ Hono からは `c.env.XXX` でアクセスする。Workers には `process.env` 
 
 ## コミット規約
 
-Conventional Commits (`feat:` / `fix:` / `chore:` / `docs:` / `refactor:` など) に従う。
+Conventional Commits (`feat:` / `fix:` / `chore:` / `add:` / `refactor:` など) に従う。
