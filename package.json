@@ -10,6 +10,8 @@
     "publish": true
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2",
     "hono": "4.11.1",
     "react": "19.2.1",
     "react-dom": "19.2.1"
@@ -24,6 +26,7 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
+    "drizzle-kit": "^0.31.10",
     "jsdom": "^30.0.1",
     "typescript": "5.9.3",
     "vite": "^7.0.0",
@@ -35,6 +38,9 @@
     "build": "tsc -b && vite build",
     "cf-typegen": "wrangler types",
     "check": "tsc -b && vite build && wrangler deploy --dry-run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
     "deploy": "wrangler deploy",
     "dev": "vite",
     "lint": "biome lint .",
