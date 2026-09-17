@@ -22,7 +22,7 @@
 
 * バックエンド: Hono
 
-* 認証: Better Auth
+* 認証: Better Auth（メールアドレス＋パスワード）
 
 * メインDB: Neon (PostgreSQL)
 

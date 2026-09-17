@@ -10,17 +10,18 @@
 
 ## 現在地
 
-Neon + Drizzleの接続基盤を追加済み。`GET /api/db-version` でHonoから `SELECT version()` を実行し、スタイル付きHTMLでバージョンと接続状態を表示するサンプルを実装。認証・サブスク管理画面は未着手。
+`src/server/db/schema.ts` に `user` / `subscription` テーブルを定義し、初回マイグレーションをNeonに適用済み。認証はメールアドレス＋パスワード（Better Auth）に決定。`src/server/index.ts` は4行のみでルートは1つもなく、DB接続コード・APIエンドポイント・認証・サブスク管理画面はすべて未着手。
 
 ## 直近の作業ログ
 
-- 2026-09-17: Neon接続サンプル `/api/db-version` を追加。ローカルWorkerから実際のNeonへ接続し、HTTP 200とPostgreSQL 18.6の応答を確認。型チェック・変更ファイルのBiomeチェック・既存テスト2件が成功。
+- 2026-09-17: `src/server/db/schema.ts` に `user` / `subscription` を定義し、`pnpm db:generate` / `pnpm db:migrate` でNeonに適用。認証方式をメールアドレス＋パスワードに決定し `docs/overview.md` に反映。
+- 2026-09-17: Neon + Drizzleの依存関係と `drizzle.config.ts` を追加（`580d2c1`）。`src/server` 配下のコードは変更なし。
 - 2026-09-17: 現行コードを確認し、最初のゴール・実装順序・完了条件を記録。機能実装は未着手。
-- 2026-09-16: `docs/spec.md`（仕様・開発計画）を作成。`docs/overview.md`（アプリ概要）も既存。
+- 2026-09-16: `docs/overview.md`（アプリ概要）を作成。
 - 2026-09-16: `CLAUDE.md` にコーディング方針・docs 運用ルールを追記。
 
 ## 次にやること
 
-NeonとBetter Authによる認証・永続化の土台を作り、ログインしたユーザーだけが利用できるAPIを通す。
+`.claude/plans/services-crud-userid.md`（`subscription` に読み替え済み）に沿って、DB接続コード・開発用ユーザーでのCRUD API・フロントの登録フォームを実装する。その後Better Authを導入し、`DEV_USER_ID` ミドルウェアをセッション検証に置き換える。
 
 ## 保留中の主な確認事項

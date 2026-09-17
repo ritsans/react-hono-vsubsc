@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!dist", "!build", "!.vite", "!worker-configuration.d.ts", "!.claude"]
+    "includes": ["**", "!dist", "!build", "!.vite", "!worker-configuration.d.ts", "!drizzle", "!.claude"]
   },
   "formatter": {
     "enabled": true,

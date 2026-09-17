@@ -108,7 +108,7 @@ Hono からは `c.env.XXX` でアクセスする。Workers には `process.env` 
 
 ## データベース (Neon + Drizzle ORM)
 
-※ データベース・ドライバ共に未導入（`package.json` に依存はまだない）。導入する際は以下に従うこと。
+※ ドライバ・スキーマ（`src/server/db/schema.ts`、`user` / `subscription`）・初回マイグレーションは導入済み。ただし接続コード（`src/server/db/client.ts` 等）はまだ存在しない。導入・実装する際は以下に従うこと。
 
 - ドライバは **`drizzle-orm/neon-http` + `@neondatabase/serverless`** を使う。HTTP 経由なので**接続プールもHyperdriveも不要**（1 リクエスト = 1 クエリ。トランザクションが必要なら `drizzle-orm/neon-serverless` の WebSocket 版に切り替える）
 - **`pg` / `postgres.js` は使わない。** `nodejs_compat` があるので技術的には動くが、TCP 接続のたびにハンドシェイクのコストがかかり、Cloudflare は別途 Hyperdrive バインディングの併用を推奨しているため、この構成とは噛み合わない

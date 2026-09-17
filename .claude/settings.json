@@ -1,4 +1,33 @@
 {
+  "permissions": {
+    "deny": [
+      "Read(.dev.vars*)",
+      "Read(.env*)",
+      "Grep(.dev.vars*)",
+      "Grep(.env*)",
+      "Bash(cat .dev.vars*)",
+      "Bash(source .dev.vars*)",
+      "Bash(. .dev.vars*)",
+      "Bash(less .dev.vars*)",
+      "Bash(more .dev.vars*)",
+      "Bash(head .dev.vars*)",
+      "Bash(tail .dev.vars*)",
+      "Bash(cp .dev.vars*)",
+      "Bash(cat .env*)",
+      "Bash(source .env*)",
+      "Bash(. .env*)",
+      "Bash(less .env*)",
+      "Bash(more .env*)",
+      "Bash(head .env*)",
+      "Bash(tail .env*)",
+      "Bash(cp .env*)",
+      "Bash(env)",
+      "Bash(env *)",
+      "Bash(printenv)",
+      "Bash(printenv *)",
+      "Bash(export DATABASE_URL*)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {
