@@ -13,6 +13,8 @@ import {
 // Better Auth 導入後は同ライブラリの CLI が生成するファイルに差し替える。
 // そのとき差分マイグレーションに user の ALTER が出ないよう、
 // CLI の出力（列名・型・timestamp のタイムゾーン無し・$onUpdate）と完全に同じ形で書いている。
+// ただし image（プロフィール画像URL）は使わないため意図的に省略している。
+// CLI 生成時に image 列の ADD が出た場合は、そのマイグレーションから当該行を消してから適用する。
 
 // pgTable: PostgreSQL のテーブルを定義する関数
 // pgEnum: PostgreSQL の列挙型を定義する関数
