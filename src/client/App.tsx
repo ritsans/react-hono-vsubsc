@@ -1,11 +1,22 @@
+import AuthForm from "./AuthForm";
+import { authClient } from "./lib/auth-client";
+import SubscriptionList from "./SubscriptionList";
+
+// セッションの有無で「ログイン画面」か「一覧画面」かを切り替えるだけの入口。
 function App() {
-  return (
-    <main className="app-shell">
-      <p className="eyebrow">動作確認</p>
-      <h1>Reactアプリが起動しました</h1>
-      <p>この画面はスキャフォールドの初期表示です。</p>
-    </main>
-  );
+  const { data: session, isPending } = authClient.useSession();
+
+  if (isPending) {
+    return (
+      <main className="app-shell">
+        <p>読み込み中...</p>
+      </main>
+    );
+  }
+
+  if (!session) return <AuthForm />;
+
+  return <SubscriptionList userName={session.user.name} />;
 }
 
 export default App;
