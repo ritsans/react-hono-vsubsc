@@ -6,11 +6,18 @@ type Subscription = {
   id: string;
   name: string;
   amount: number;
-  currency: "JPY" | "USD";
+  currency: "JPY" | "USD" | "EUR";
   billingCycle: "monthly" | "yearly";
   nextBillingDate: string;
   url: string | null;
   note: string | null;
+};
+
+// GET /api/exchange-rates が返す1通貨ぶんのレート。
+type ExchangeRate = {
+  date: string;
+  currency: "USD" | "EUR";
+  rate: number;
 };
 
 // ログイン後に表示する画面。一覧の取得・追加・削除を fetch で直接行う。
@@ -18,10 +25,11 @@ function SubscriptionList({ userName }: { userName: string }) {
   const [items, setItems] = useState<Subscription[]>([]);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<"JPY" | "USD">("JPY");
+  const [currency, setCurrency] = useState<"JPY" | "USD" | "EUR">("JPY");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [nextBillingDate, setNextBillingDate] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [yenTotal, setYenTotal] = useState<number | null>(null);
 
   async function reload() {
     const res = await fetch("/api/subscriptions");
@@ -69,6 +77,46 @@ function SubscriptionList({ userName }: { userName: string }) {
     await reload();
   }
 
+  // 今月支払うサブスクの合計額を円換算する。
+  // 今月の対象に実際に使われている外貨（USD/EUR）だけレートを取りに行き、使われていない通貨は問い合わせない。
+  async function handleConvertToYen() {
+    setError(null);
+    setYenTotal(null);
+
+    // 今月支払うものだけに絞る。月額と年額をそのまま足すと「いくら払うか」が分からなくなるため。
+    // 月払いは毎月必ず払うので常に含める。
+    // 年払いは次回支払日の「月」だけを見る。年払いは毎年同じ月に請求されるので、
+    // 支払後に次回支払日を更新し忘れていても翌年以降も正しく含まれる。
+    const thisMonth = new Date().getMonth() + 1; // ブラウザのローカル日付で「今月」を決める
+    const thisMonthItems = items.filter((s) => {
+      if (s.billingCycle === "monthly") return true;
+      const billingMonth = Number(s.nextBillingDate.slice(5, 7)); // "YYYY-MM-DD" の MM
+      return billingMonth === thisMonth;
+    });
+
+    let total = thisMonthItems
+      .filter((s) => s.currency === "JPY")
+      .reduce((sum, s) => sum + s.amount, 0);
+
+    for (const currency of ["USD", "EUR"] as const) {
+      const foreignSum = thisMonthItems
+        .filter((s) => s.currency === currency)
+        .reduce((sum, s) => sum + s.amount, 0);
+      if (foreignSum === 0) continue;
+
+      const res = await fetch(`/api/exchange-rates?currency=${currency}`);
+      if (!res.ok) {
+        setError("レートを取得できませんでした");
+        return;
+      }
+      const rate: ExchangeRate = await res.json();
+      total += foreignSum * rate.rate;
+    }
+
+    // 通貨ごとの合計を出してから最後に1回だけ四捨五入する（1件ずつ丸めると誤差が積み上がるため）。
+    setYenTotal(Math.round(total));
+  }
+
   async function handleDelete(id: string) {
     const res = await fetch(`/api/subscriptions/${id}`, { method: "DELETE" });
     if (!res.ok) {
@@ -110,10 +158,11 @@ function SubscriptionList({ userName }: { userName: string }) {
           通貨
           <select
             value={currency}
-            onChange={(e) => setCurrency(e.target.value as "JPY" | "USD")}
+            onChange={(e) => setCurrency(e.target.value as "JPY" | "USD" | "EUR")}
           >
             <option value="JPY">JPY</option>
             <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
           </select>
         </label>
         <label>
@@ -139,6 +188,14 @@ function SubscriptionList({ userName }: { userName: string }) {
       </form>
 
       {error && <p className="error">{error}</p>}
+
+      <button
+        type="button"
+        onClick={handleConvertToYen}
+      >
+        円換算
+      </button>
+      {yenTotal !== null && <p>今月の支払い 約 {yenTotal.toLocaleString()} 円（参考値）</p>}
 
       <ul className="list">
         {items.map((s) => (

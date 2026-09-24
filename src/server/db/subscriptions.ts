@@ -10,7 +10,7 @@ import { subscription } from "./schema";
 export type SubscriptionInput = {
   name: string;
   amount: number;
-  currency: "JPY" | "USD";
+  currency: "JPY" | "USD" | "EUR";
   billingCycle: "monthly" | "yearly";
   nextBillingDate: string; // "YYYY-MM-DD"
   url: string | null;

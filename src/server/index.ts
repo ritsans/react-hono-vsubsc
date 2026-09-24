@@ -72,7 +72,51 @@ subscriptionsApp.delete("/:id", async (c) => {
 // ---  subscriptionsインスタンスここまで。ここから通常のappインスタンスが続きます ---
 app.route("/api/subscriptions", subscriptionsApp);
 
+// ---- 円換算レート（ログイン必須） ----
+// サブスクの外貨（USD/EUR）を円に換算するための参考レートを返す窓口。
+// 精密さは不要で「だいたいの参考値」として使うだけなので、換算自体はフロントで行い、
+// ここでは Frankfurter から取得した1通貨ぶんのレートを中継するだけにする。
+const exchangeRatesApp = new Hono<{ Bindings: Env }>();
+
+exchangeRatesApp.use("*", async (c, next) => {
+  const db = createDb(c.env.DATABASE_URL);
+  const auth = createAuth(db, c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session) return c.json({ error: "unauthorized" }, 401);
+  await next();
+});
+
+exchangeRatesApp.get("/", async (c) => {
+  const currency = c.req.query("currency");
+  if (currency !== "USD" && currency !== "EUR") {
+    return c.json({ error: "currency must be USD or EUR" }, 400);
+  }
+
+  const rate = await fetchYenRate(currency);
+  if (!rate) return c.json({ error: "failed to fetch exchange rate" }, 502);
+
+  return c.json(rate);
+});
+
+app.route("/api/exchange-rates", exchangeRatesApp);
+
 export default app;
+
+// Frankfurter から「1 currency が何円か」を1回のリクエストで取得する。
+// 対象通貨ごとに呼び分け、必要な通貨だけを取得する（全通貨まとめての取得はしない）。
+async function fetchYenRate(currency: "USD" | "EUR") {
+  const url = `https://api.frankfurter.dev/v2/rates?base=${currency}&quotes=JPY`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const body = (await res.json()) as unknown;
+  if (!Array.isArray(body) || body.length !== 1) return null;
+
+  const entry = body[0] as Record<string, unknown>;
+  if (typeof entry.date !== "string" || typeof entry.rate !== "number") return null;
+
+  return { date: entry.date, currency, rate: entry.rate };
+}
 
 // リクエストボディをバリデーションチェックして、通ったときだけ SubscriptionInput を返す。 型と制約はここが正。引っかかるとnullを返します。
 // JSONオブジェクトか？nameが文字列かつ空白のみか？など、リクエストボディ内容を上から下に１つづつチェックしています
@@ -82,7 +126,7 @@ function parseSubscriptionInput(body: unknown): SubscriptionInput | null {
 
   if (typeof b.name !== "string" || b.name.trim() === "") return null;
   if (typeof b.amount !== "number" || !Number.isFinite(b.amount) || b.amount < 0) return null;
-  if (b.currency !== "JPY" && b.currency !== "USD") return null;
+  if (b.currency !== "JPY" && b.currency !== "USD" && b.currency !== "EUR") return null;
   if (b.billingCycle !== "monthly" && b.billingCycle !== "yearly") return null;
   if (typeof b.nextBillingDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b.nextBillingDate)) {
     return null;

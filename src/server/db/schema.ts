@@ -90,7 +90,7 @@ export const verification = pgTable(
 );
 
 // 通貨 (JPY, USD) の列挙型
-export const currencyEnum = pgEnum("currency", ["JPY", "USD"]);
+export const currencyEnum = pgEnum("currency", ["JPY", "USD", "EUR"]);
 // 課金サイクル (月額 or 年額)
 export const billingCycleEnum = pgEnum("billing_cycle", ["monthly", "yearly"]);
 
