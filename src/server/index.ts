@@ -10,10 +10,11 @@ import {
 } from "./db/subscriptions";
 
 const app = new Hono<{ Bindings: Env }>();
+// Bindings: Env は Hono の型パラメータで、c.env の型を決めるものです。
 
 // ---- 認証 (Better Auth) ----
 // サインアップ・サインイン・サインアウト・セッション取得は
-// すべて /api/auth/* 配下で Better Auth が処理する。
+// すべて /api/auth/* 配下Better Authに丸投げして処理します。ここではすべてを書きません。
 app.on(["GET", "POST"], "/api/auth/*", (c) => {
   const db = createDb(c.env.DATABASE_URL);
   const auth = createAuth(db, c.env);
@@ -21,11 +22,11 @@ app.on(["GET", "POST"], "/api/auth/*", (c) => {
 });
 
 // ---- サブスク CRUD（ログイン必須） ----
-// Variables を付けるのはこのサブアプリだけ。
+// 小さいHonoサブアプリを作り、メインアプリに合体させる」ExpressのRouterに近い役割。
 // 保護外のルートで c.get("userId") を書くと型エラーになる。
 const subscriptionsApp = new Hono<{ Bindings: Env; Variables: { userId: string } }>();
 
-// このサブアプリの全ルートはまずここを通る。
+// このサブアプリの全ルートはまずこのインスタンスを通る。
 // Cookie のセッションが無効なら 401 で止め、有効なら userId を後続に渡す。
 subscriptionsApp.use("*", async (c, next) => {
   const db = createDb(c.env.DATABASE_URL);
@@ -68,12 +69,13 @@ subscriptionsApp.delete("/:id", async (c) => {
   return c.json(row);
 });
 
+// ---  subscriptionsインスタンスここまで。ここから通常のappインスタンスが続きます ---
 app.route("/api/subscriptions", subscriptionsApp);
 
 export default app;
 
-// リクエストボディを検査して、通ったときだけ SubscriptionInput を返す。
-// 型と制約はここが正（docs には転記しない）。
+// リクエストボディをバリデーションチェックして、通ったときだけ SubscriptionInput を返す。 型と制約はここが正。引っかかるとnullを返します。
+// JSONオブジェクトか？nameが文字列かつ空白のみか？など、リクエストボディ内容を上から下に１つづつチェックしています
 function parseSubscriptionInput(body: unknown): SubscriptionInput | null {
   if (typeof body !== "object" || body === null) return null;
   const b = body as Record<string, unknown>;
