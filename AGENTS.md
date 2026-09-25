@@ -35,6 +35,12 @@ Cloudflare Workers 上で動く React (client) + Hono (server) の単一 Worker 
 
 新しいセッションの開始時、または前回の作業を引き継ぐ時は、まず `docs/progress.md` を読み、現在地と次にやることを確認する。作業が一区切りついたら（機能単位の実装完了・方針決定など）`docs/progress.md` を更新する。
 
+#### セッション更新ルール
+
+- 指示がなければ、`docs/progress.md` は **40 行以内**に収める。
+- 既存文書の更新では不要になった説明を削り、追記で肥大化させない。作業履歴は列挙せず、現在有効な結論と次の作業だけを簡潔に書く。
+- 必要な情報が上限に収まらない場合は、重要な情報を省略せず、長くする前にユーザーに相談する。既存文書を長さだけを理由に一括で書き直さない。
+
 ## パッケージマネージャ
 
 Use **pnpm only**. The `preview` script directly invokes `pnpm run build`, and the project uses a single lockfile: `pnpm-lock.yaml`.
