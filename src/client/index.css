@@ -61,7 +61,7 @@
   align-items: center;
 }
 
-.error {
+.app-shell .error {
   color: #dc2626;
 }
 

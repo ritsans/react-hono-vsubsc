@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAuth } from "./auth/create-auth";
+import { createSubscription } from "./db/subscriptions";
 import app from "./index";
 
 // createAuth をラップしてモック可能にする。デフォルトは本物の実装をそのまま呼ぶので、
@@ -8,6 +9,11 @@ import app from "./index";
 vi.mock("./auth/create-auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./auth/create-auth")>();
   return { ...actual, createAuth: vi.fn(actual.createAuth) };
+});
+
+vi.mock("./db/subscriptions", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./db/subscriptions")>();
+  return { ...actual, createSubscription: vi.fn(actual.createSubscription) };
 });
 
 function mockLoggedIn() {
@@ -132,8 +138,11 @@ describe("GET /api/exchange-rates", () => {
 });
 
 describe("POST /api/subscriptions with EUR", () => {
+  afterEach(() => vi.mocked(createSubscription).mockReset());
+
   it("accepts EUR as a valid currency", async () => {
     mockLoggedIn();
+    vi.mocked(createSubscription).mockResolvedValue({ id: "subscription-1" } as never);
     const res = await app.request(
       "/api/subscriptions",
       {
@@ -150,8 +159,61 @@ describe("POST /api/subscriptions with EUR", () => {
       env,
     );
 
-    // DB には繋がっていないため作成自体は失敗するが、
-    // 400 (invalid input) にならないことで currency のバリデーションを通過したと分かる。
-    expect(res.status).not.toBe(400);
+    expect(res.status).toBe(201);
+    expect(createSubscription).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-1",
+      expect.objectContaining({ currency: "EUR", amount: 9.99 }),
+    );
+  });
+
+  it.each([
+    ["an amount too large for numeric(10,2)", 100000000, "2026-10-01"],
+    ["an amount with too many decimal places", 1.001, "2026-10-01"],
+    ["an invalid February date", 1, "2026-02-31"],
+    ["a non-leap February 29", 1, "2026-02-29"],
+    ["a year zero date", 1, "0000-01-01"],
+  ])("rejects %s before writing", async (_label, amount, nextBillingDate) => {
+    mockLoggedIn();
+    const res = await app.request(
+      "/api/subscriptions",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Spotify",
+          amount,
+          currency: "EUR",
+          billingCycle: "monthly",
+          nextBillingDate,
+        }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+    expect(createSubscription).not.toHaveBeenCalled();
+  });
+
+  it("accepts a valid leap day and an amount with two decimal places", async () => {
+    mockLoggedIn();
+    vi.mocked(createSubscription).mockResolvedValue({ id: "subscription-1" } as never);
+    const res = await app.request(
+      "/api/subscriptions",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Spotify",
+          amount: 0.29,
+          currency: "EUR",
+          billingCycle: "monthly",
+          nextBillingDate: "2028-02-29",
+        }),
+      },
+      env,
+    );
+
+    expect(res.status).toBe(201);
   });
 });

@@ -118,17 +118,38 @@ async function fetchYenRate(currency: "USD" | "EUR") {
   return { date: entry.date, currency, rate: entry.rate };
 }
 
-// リクエストボディをバリデーションチェックして、通ったときだけ SubscriptionInput を返す。 型と制約はここが正。引っかかるとnullを返します。
+// ----------------------------------
+//  リクエストボディの事前バリデーション
+// ----------------------------------
+// ボディをチェックして、通ったときだけ SubscriptionInput を返す。 型と制約はここが正。引っかかるとnullを返します。
 // JSONオブジェクトか？nameが文字列かつ空白のみか？など、リクエストボディ内容を上から下に１つづつチェックしています
 function parseSubscriptionInput(body: unknown): SubscriptionInput | null {
   if (typeof body !== "object" || body === null) return null;
   const b = body as Record<string, unknown>;
 
   if (typeof b.name !== "string" || b.name.trim() === "") return null;
-  if (typeof b.amount !== "number" || !Number.isFinite(b.amount) || b.amount < 0) return null;
+
+  // DB の numeric(10,2) に保存できない金額は、DB エラーになる前に入力不正として返す。
+  if (
+    typeof b.amount !== "number" ||
+    !Number.isFinite(b.amount) ||
+    b.amount < 0 ||
+    b.amount > 99999999.99 ||
+    !/^\d+(\.\d{1,2})?$/.test(String(b.amount))
+  )
+    return null;
   if (b.currency !== "JPY" && b.currency !== "USD" && b.currency !== "EUR") return null;
   if (b.billingCycle !== "monthly" && b.billingCycle !== "yearly") return null;
   if (typeof b.nextBillingDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b.nextBillingDate)) {
+    return null;
+  }
+  // うるう年(leapYear) を含め実在する日付かチェック。
+  const [year, month, day] = b.nextBillingDate.split("-").map(Number);
+
+  //  4で割り切れる年はうるう年。ただし100で割り切れる年は除き、400で割り切れる年は再び含める
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (year === 0 || month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1]) {
     return null;
   }
   if (b.url !== undefined && b.url !== null && typeof b.url !== "string") return null;

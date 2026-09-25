@@ -1,6 +1,6 @@
 # 進捗メモ
 
-更新日：2026-09-24
+更新日：2026-09-25
 目的：セッションを終えても次回すぐ再開できるように、現在地と次にやることを記録する。
 
 ## この文書の使い方
@@ -21,6 +21,12 @@ Better Auth（メール＋パスワード）と `subscription` の CRUD API、�
 円換算（`GET /api/exchange-rates`）と通貨 EUR の追加を実装済み。**ただし未コミット・未デプロイ**。設計は `.claude/plans/exchange-rates.md`。
 
 ## 直近の作業ログ
+
+- 2026-09-25: エージェント向け指示を `AGENTS.md` に移行。旧 `CLAUDE.md` のプロジェクト共通ルールはすべて `AGENTS.md` へ移し、Claude Code 専用の `/verify` への言及は `pnpm lint` → `pnpm check` の「変更後の検証」節に置き換えた。`CLAUDE.md` は `@AGENTS.md` で読み込むだけにし、Claude Code 固有の指示（`/verify` スキル、`src/` 自動整形フック、`.dev.vars` 等の読み取り禁止）だけを残した。あわせて `.claude/skills/verify/SKILL.md` の「`pnpm format` は `./src` のみ」という古い記述を、リポジトリ全体が対象という実際の挙動に合わせて修正。今後プロジェクト共通のルールは `AGENTS.md` に書く。
+
+- 2026-09-25: 前回レビューの6点を修正。ログインユーザー変更時に一覧を初期化し、古い一覧応答を無視。通信失敗時の表示・一覧再取得、多重操作の防止、登録・削除時の円換算結果の無効化を追加。API は金額の保存可能範囲・小数桁と実在日付を事前に検証。EUR 登録テストが 500 でも通っていた問題を修正し、回帰テストを追加。テスト31件、lint・型チェック・Viteビルド・Wrangler dry-run 通過。設計方針は `docs/plans/2026-09-25-mvp-stability-design.md`。デプロイは未実施。
+
+- 2026-09-25: React 側を中心に現行実装をレビュー。ユーザー切り替え時の一覧保持、遅れて完了した初回取得による一覧の巻き戻り、削除後の円換算額の残存を一時的なコンポーネントテストで再現（確認用ファイルは削除済み）。通信例外の未処理、追加の多重送信、API 入力検証と DB 制約の不一致も指摘。実装の修正は未実施。既存17テスト・lint・`tsc -b`・Vite ビルド・Wrangler dry-run は通過。ただし EUR 登録テストは DB 接続失敗による 500 でも成功するため、登録成功の保証にはなっていない。過去ログの円換算の説明と現行コードに差がある（現行は今月の対象を絞り込み、四捨五入）。デプロイ・マイグレーションの適用状況は今回未確認。
 
 - 2026-09-24: 円換算 API `GET /api/exchange-rates?currency=USD|EUR` を実装（ログイン必須。Frankfurter v2 を通貨ごとに1回だけ呼び、`{ date, currency, rate }` を返す。失敗時は 502）。通貨に EUR を追加（`schema.ts` の `currencyEnum`、`SubscriptionInput`、`parseSubscriptionInput`、フロントの型と選択肢）し、マイグレーション `0006`（`ALTER TYPE currency ADD VALUE 'EUR'`）を生成。フロントに「円換算」ボタンを追加（登録済みサブスクに含まれる外貨だけレートを取得し、合計後に1回だけ丸める）。Frankfurter v2 のレスポンスはオブジェクトではなく**1要素の配列**であることを実測で確認し、プランの記載を修正。テストは server/client 合わせて 14件通過、`pnpm check` 通過。
 

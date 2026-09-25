@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SubscriptionList from "./SubscriptionList";
 
@@ -103,5 +104,108 @@ describe("SubscriptionList 円換算", () => {
     // 1000円 + 1500円 + 年払い 50ユーロ × 160円
     expect(await screen.findByText(/今月の支払い 約 10,500 円/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/exchange-rates?currency=EUR");
+  });
+});
+
+describe("SubscriptionList 通信と一覧の更新", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("deleting a subscription clears the previous yen total", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [items[0]] })
+        .mockResolvedValueOnce({ ok: true })
+        .mockResolvedValueOnce({ ok: true, json: async () => [] }),
+    );
+    render(<SubscriptionList userName="Taro" />);
+    await screen.findByText(/月払いJPY/);
+    fireEvent.click(screen.getByRole("button", { name: "円換算" }));
+    await screen.findByText(/1,000 円/);
+    fireEvent.click(screen.getByRole("button", { name: "削除" }));
+    await waitFor(() => expect(screen.queryByText(/月払いJPY/)).not.toBeInTheDocument());
+    expect(screen.queryByText(/1,000 円/)).not.toBeInTheDocument();
+  });
+
+  it("a slow initial load cannot overwrite a newer list", async () => {
+    let finishInitial!: (response: unknown) => void;
+    const initial = new Promise((resolve) => {
+      finishInitial = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(initial)
+      .mockResolvedValueOnce({ ok: true, json: async () => [items[0]] });
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <StrictMode>
+        <SubscriptionList userName="Taro" />
+      </StrictMode>,
+    );
+    await screen.findByText(/月払いJPY/);
+    await act(async () => {
+      finishInitial({ ok: true, json: async () => [] });
+    });
+    expect(screen.getByText(/月払いJPY/)).toBeInTheDocument();
+  });
+
+  it("a failed network request shows an error and allows retry", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ ok: true, json: async () => [] });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<SubscriptionList userName="Taro" />);
+    await screen.findByText("一覧の取得に失敗しました");
+    fireEvent.click(screen.getByRole("button", { name: "一覧を再読み込み" }));
+    await waitFor(() =>
+      expect(screen.queryByText("一覧の取得に失敗しました")).not.toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not send a second POST while the first is in progress", async () => {
+    let finishPost!: (response: unknown) => void;
+    const pendingPost = new Promise((resolve) => {
+      finishPost = resolve;
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })
+      .mockReturnValueOnce(pendingPost)
+      .mockResolvedValueOnce({ ok: true, json: async () => [items[0]] });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<SubscriptionList userName="Taro" />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "追加" })).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("サービス名"), { target: { value: "Spotify" } });
+    fireEvent.change(screen.getByLabelText("金額"), { target: { value: "100" } });
+    fireEvent.change(screen.getByLabelText("次回請求日"), { target: { value: "2026-10-01" } });
+    const button = screen.getByRole("button", { name: "追加" });
+    fireEvent.click(button);
+    const form = button.closest("form");
+    if (!form) throw new Error("Addition form not found");
+    fireEvent.submit(form);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(button).toBeDisabled();
+    await act(async () => {
+      finishPost({ ok: true });
+    });
+    await screen.findByText(/月払いJPY/);
+  });
+
+  it("a failed exchange-rate request shows an error instead of a stale amount", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => [items[1]] })
+        .mockRejectedValueOnce(new Error("offline")),
+    );
+    render(<SubscriptionList userName="Taro" />);
+    await screen.findByText(/月払いUSD/);
+    fireEvent.click(screen.getByRole("button", { name: "円換算" }));
+    expect(await screen.findByText("レートを取得できませんでした")).toBeInTheDocument();
+    expect(screen.queryByText(/今月の支払い 約/)).not.toBeInTheDocument();
   });
 });

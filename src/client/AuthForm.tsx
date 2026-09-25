@@ -8,18 +8,27 @@ function AuthForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isSubmitting) return;
     setError(null);
+    setIsSubmitting(true);
+    try {
+      const result =
+        mode === "signIn"
+          ? await authClient.signIn.email({ email, password })
+          : await authClient.signUp.email({ name, email, password });
 
-    const result =
-      mode === "signIn"
-        ? await authClient.signIn.email({ email, password })
-        : await authClient.signUp.email({ name, email, password });
-
-    // 成功時は useSession が更新されて App 側で画面が切り替わるので、ここでは何もしない。
-    if (result.error) setError(result.error.message ?? "認証に失敗しました");
+      // 成功時は useSession が更新されて App 側で画面が切り替わるので、ここでは何もしない。
+      if (result.error) setError(result.error.message ?? "認証に失敗しました");
+    } catch {
+      setError("通信に失敗しました。もう一度お試しください");
+    } finally {
+      // 成功・失敗のどちらでも送信ボタンを元に戻す。
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -59,11 +68,17 @@ function AuthForm() {
           />
         </label>
         {error && <p className="error">{error}</p>}
-        <button type="submit">{mode === "signIn" ? "ログイン" : "登録する"}</button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "送信中..." : mode === "signIn" ? "ログイン" : "登録する"}
+        </button>
       </form>
       <button
         type="button"
         className="link"
+        disabled={isSubmitting}
         onClick={() => setMode(mode === "signIn" ? "signUp" : "signIn")}
       >
         {mode === "signIn" ? "アカウントを作成する" : "ログイン画面へ戻る"}
