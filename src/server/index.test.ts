@@ -120,6 +120,24 @@ describe("GET /api/exchange-rates", () => {
     expect(res.status).toBe(502);
   });
 
+  it("returns 502 when the request to Frankfurter throws", async () => {
+    mockLoggedIn();
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network error")));
+
+    const res = await app.request("/api/exchange-rates?currency=USD", {}, env);
+
+    expect(res.status).toBe(502);
+  });
+
+  it("returns 502 when Frankfurter sends malformed JSON", async () => {
+    mockLoggedIn();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not json")));
+
+    const res = await app.request("/api/exchange-rates?currency=USD", {}, env);
+
+    expect(res.status).toBe(502);
+  });
+
   it("returns 502 when Frankfurter's response has no numeric rate", async () => {
     mockLoggedIn();
     vi.stubGlobal(
@@ -134,6 +152,48 @@ describe("GET /api/exchange-rates", () => {
     const res = await app.request("/api/exchange-rates?currency=USD", {}, env);
 
     expect(res.status).toBe(502);
+  });
+
+  it.each([0, -1, "Infinity"])('returns 502 for an invalid rate %s', async (rate) => {
+    mockLoggedIn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify([{ date: "2026-09-24", rate: Number(rate) }])),
+      ),
+    );
+
+    const res = await app.request("/api/exchange-rates?currency=USD", {}, env);
+
+    expect(res.status).toBe(502);
+  });
+});
+
+describe("subscription input errors", () => {
+  it.each([
+    ["POST", "/api/subscriptions"],
+    ["PUT", "/api/subscriptions/11111111-1111-1111-1111-111111111111"],
+  ])("returns 400 for malformed JSON in %s", async (method, path) => {
+    mockLoggedIn();
+    const res = await app.request(
+      path,
+      { method, headers: { "content-type": "application/json" }, body: "not json" },
+      env,
+    );
+
+    expect(res.status).toBe(400);
+    expect(createSubscription).not.toHaveBeenCalled();
+  });
+
+  it.each(["PUT", "DELETE"])("returns 400 for a non-UUID id in %s", async (method) => {
+    mockLoggedIn();
+    const res = await app.request(
+      "/api/subscriptions/not-a-uuid",
+      { method, headers: { "content-type": "application/json" }, body: "{}" },
+      env,
+    );
+
+    expect(res.status).toBe(400);
   });
 });
 

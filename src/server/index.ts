@@ -43,8 +43,18 @@ subscriptionsApp.get("/", async (c) => {
   return c.json(rows);
 });
 
+// サブスクのCRUD系ここから
+// JSONで読めるかどうかのCHECK・UUIDの検証などDB処理に進む前に無効な入力(400)として弾かれます
+// 有効な入力を確認してからDBへ接続して書き込みます。
+
 subscriptionsApp.post("/", async (c) => {
-  const input = parseSubscriptionInput(await c.req.json());
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid input" }, 400);
+  }
+  const input = parseSubscriptionInput(body);
   if (!input) return c.json({ error: "invalid input" }, 400);
 
   const db = createDb(c.env.DATABASE_URL);
@@ -53,7 +63,15 @@ subscriptionsApp.post("/", async (c) => {
 });
 
 subscriptionsApp.put("/:id", async (c) => {
-  const input = parseSubscriptionInput(await c.req.json());
+  if (!isUuid(c.req.param("id"))) return c.json({ error: "invalid input" }, 400);
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid input" }, 400);
+  }
+  const input = parseSubscriptionInput(body);
   if (!input) return c.json({ error: "invalid input" }, 400);
 
   const db = createDb(c.env.DATABASE_URL);
@@ -63,19 +81,20 @@ subscriptionsApp.put("/:id", async (c) => {
 });
 
 subscriptionsApp.delete("/:id", async (c) => {
+  if (!isUuid(c.req.param("id"))) return c.json({ error: "invalid input" }, 400);
+
   const db = createDb(c.env.DATABASE_URL);
   const row = await deleteSubscription(db, c.get("userId"), c.req.param("id"));
   if (!row) return c.json({ error: "not found" }, 404);
   return c.json(row);
 });
 
-// ---  subscriptionsインスタンスここまで。ここから通常のappインスタンスが続きます ---
 app.route("/api/subscriptions", subscriptionsApp);
 
-// ---- 円換算レート（ログイン必須） ----
+// ---- 円換算レート by FrankfurterAPI V2 ----
 // サブスクの外貨（USD/EUR）を円に換算するための参考レートを返す窓口。
 // 精密さは不要で「だいたいの参考値」として使うだけなので、換算自体はフロントで行い、
-// ここでは Frankfurter から取得した1通貨ぶんのレートを中継するだけにする。
+
 const exchangeRatesApp = new Hono<{ Bindings: Env }>();
 
 exchangeRatesApp.use("*", async (c, next) => {
@@ -104,18 +123,33 @@ export default app;
 
 // Frankfurter から「1 currency が何円か」を1回のリクエストで取得する。
 // 対象通貨ごとに呼び分け、必要な通貨だけを取得する（全通貨まとめての取得はしない）。
+//
 async function fetchYenRate(currency: "USD" | "EUR") {
   const url = `https://api.frankfurter.dev/v2/rates?base=${currency}&quotes=JPY`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
 
-  const body = (await res.json()) as unknown;
-  if (!Array.isArray(body) || body.length !== 1) return null;
+    const body = (await res.json()) as unknown;
+    if (!Array.isArray(body) || body.length !== 1) return null;
 
-  const entry = body[0] as Record<string, unknown>;
-  if (typeof entry.date !== "string" || typeof entry.rate !== "number") return null;
+    const entry = body[0] as Record<string, unknown>;
+    if (
+      typeof entry.date !== "string" ||
+      typeof entry.rate !== "number" ||
+      !Number.isFinite(entry.rate) ||
+      entry.rate <= 0
+    )
+      return null;
 
-  return { date: entry.date, currency, rate: entry.rate };
+    return { date: entry.date, currency, rate: entry.rate };
+  } catch {
+    return null;
+  }
+}
+
+function isUuid(id: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
 // ----------------------------------

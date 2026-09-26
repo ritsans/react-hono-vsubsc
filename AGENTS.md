@@ -2,16 +2,17 @@
 
 このリポジトリで作業するコーディングエージェント向けの指示。ツールに依存しないプロジェクト共通のルールはすべてここに書く。
 
-## プロジェクト構成
+## Project Guidelines
 
 Cloudflare Workers 上で動く React (client) + Hono (server) の単一 Worker アプリ。
 
 - `src/client` — Frontend i.e React SPA。`dist/client` にビルドされ、Worker の `ASSETS` バインディング経由で配信
 - `src/server` — Backend i.e Hono。Worker のエントリポイント (`wrangler.jsonc` の `main`)
+- サブスクのDB操作は `src/server/db/subscriptions.ts` に集約し、読み書きは必ず認証済みの userId で所有者を限定する。
 
-## コーディング方針
+## Coding Guidelines
 
-**「効率化」「実装の速さ」よりも、非エンジニアが読んでも処理の流れを追えるシンプルさを優先する。**
+**Prioritize simplicity that allows even non-engineers to follow the processing flow over "efficiency" or "implementation speed."**
 
 - 処理は上から下への一本道に書く。
 - 先回りした抽象化・汎用化をしない。1 箇所でしか使わないものをわざわざ共通化しない
@@ -19,7 +20,7 @@ Cloudflare Workers 上で動く React (client) + Hono (server) の単一 Worker 
 - パフォーマンス最適化は、実測で問題が出てから行う。**推測で最適化しない**
 - 迷ったらユーザーに尋ねる
 
-## ドキュメント (`docs/`)
+## Documents (`docs/`)
 
 仕様・設計書は `docs/` に置く。常時読み込まず、**仕様判断・設計意図・ドメイン用語の確認時のみ** `ls docs/` で一覧を確認して参照する（リファクタや型修正時は不要）。
 
@@ -31,17 +32,17 @@ Cloudflare Workers 上で動く React (client) + Hono (server) の単一 Worker 
 - **docs が正**: 目的・設計意図・採用理由（「なぜ」の部分）
   - 実装と食い違う場合は、意図的な変更か実装漏れかを判断して対応する。
 
-### セッション再開
+### Resume Session
 
 新しいセッションの開始時、または前回の作業を引き継ぐ時は、まず `docs/progress.md` を読み、現在地と次にやることを確認する。作業が一区切りついたら（機能単位の実装完了・方針決定など）`docs/progress.md` を更新する。
 
-#### セッション更新ルール
+#### Update Rules for progress.md
 
 - 指示がなければ、`docs/progress.md` は **40 行以内**に収める。
 - 既存文書の更新では不要になった説明を削り、追記で肥大化させない。作業履歴は列挙せず、現在有効な結論と次の作業だけを簡潔に書く。
 - 必要な情報が上限に収まらない場合は、重要な情報を省略せず、長くする前にユーザーに相談する。既存文書を長さだけを理由に一括で書き直さない。
 
-## パッケージマネージャ
+## Package Manager
 
 Use **pnpm only**. The `preview` script directly invokes `pnpm run build`, and the project uses a single lockfile: `pnpm-lock.yaml`.
 
@@ -98,7 +99,7 @@ project references の対応:
 - `globals: true` は使わない。`describe` / `it` / `expect` は `vitest` から明示 import する
 - `pnpm test` (= `vitest run`) / `pnpm test:watch`。`check` / `build` には含めていない
 - server project は node 環境なので、`app.request()` で検証できるのは **Hono のルーティングとハンドラのみ**。`ASSETS` バインディングや `run_worker_first` / SPA フォールバックの挙動は対象外
-- 実ランタイムで検証したくなっても **`@cloudflare/vitest-pool-workers` は現状使えない**（0.22.0 の peer は `vitest ^4.1.0`、本プロジェクトは vitest 5 系）。使うなら vitest のダウングレードが必要
+- 実ランタイムで検証したくなっても `@cloudflare/vitest-pool-workers` は現状使えない
 
 ## API ルート
 
